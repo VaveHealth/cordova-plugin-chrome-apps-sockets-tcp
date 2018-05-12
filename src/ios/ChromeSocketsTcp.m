@@ -263,9 +263,23 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
 - (void)resumeReadIfNotReading
 {
+    [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+    
+    /* 
+    The readDatawithtimeOUt has been taken out of the conditional check for Tag equality to allow IOS to work with chunked data.  
+    The problem seems to be taht the socket generates either an overflow error on the tag or ??? as the tags do not equate and 
+    therfore the conditional is never called.  
+    
+    The side effect of this approach is that the server closes the socket so there is not the possiblity of a long poll.  
+    As this socket connection type is only used for d10 comms this is not an issue and wokrs suitably.  This requries the addition
+    of error trapping for "socket closed by server" to not trigger the socket retries for connection.
+    
+    To restore back to original delete the readDataWithTimeout above and un comment conditional below
+        
     if (_readTag == _receivedTag && _plugin->_pendingReceive == 0 && [_socket isConnected] && ![_paused boolValue]) {
-        [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+        //[_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
     }
+    */
 }
 
 - (void)setPaused:(NSNumber*)paused
