@@ -6,7 +6,7 @@
 #import "GCDAsyncSocket.h"
 
 #ifndef CHROME_SOCKETS_TCP_VERBOSE_LOGGING
-#define CHROME_SOCKETS_TCP_VERBOSE_LOGGING 0
+#define CHROME_SOCKETS_TCP_VERBOSE_LOGGING 1
 #endif
 
 #if CHROME_SOCKETS_TCP_VERBOSE_LOGGING
@@ -36,6 +36,7 @@ static NSString* stringFromData(NSData* data) {
     @public
     __weak ChromeSocketsTcp* _plugin;
 
+    NSData* _endChar;
     NSUInteger _socketId;
     NSNumber* _persistent;
     NSString* _name;
@@ -106,6 +107,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 {
     self = [super init];
     if (self) {
+        _endChar = [@"xxxxxx" dataUsingEncoding:NSUTF8StringEncoding];
         _socketId = theSocketId;
         _plugin = thePlugin;
         _paused = [NSNumber numberWithBool:NO];
@@ -162,7 +164,9 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
     NSNumber* localPort = [NSNumber numberWithUnsignedInt:[_socket localPort]];
     NSString* peerAddress = [_socket connectedHost];
     NSNumber* peerPort = [NSNumber numberWithUnsignedInt:[_socket connectedPort]];
-
+    
+    VERBOSE_LOG(@"socket:getInfo");
+    
     NSMutableDictionary* socketInfo = [@{
         @"socketId": [NSNumber numberWithUnsignedInteger:_socketId],
         @"persistent": _persistent,
@@ -191,6 +195,9 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
     NSNumber* persistent = theProperties[@"persistent"];
     NSString* name = theProperties[@"name"];
     NSNumber* bufferSize = theProperties[@"bufferSize"];
+    
+    VERBOSE_LOG(@"socket:setProperties");
+    
 
     if (persistent)
         _persistent = persistent;
@@ -199,7 +206,8 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
         _name = name;
 
     if (bufferSize && _bufferSize == 0 && ![_paused boolValue]) // read delegate method won't be called when _bufferSize == 0
-        [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[bufferSize unsignedIntegerValue] tag:++_readTag];
+        //[_socket readDataToData:_endChar withTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+        [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
 
     if (bufferSize)
         _bufferSize = bufferSize;
@@ -220,6 +228,8 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
     NSNumber* append = theProperties[@"append"];
     NSNumber* numBytes = theProperties[@"numBytes"];
     NSString* uri = theProperties[@"uri"];
+    
+    VERBOSE_LOG(@"socket:setPipeToFileProperties");
 
     [self resetPipeToFileProperties];
 
@@ -263,27 +273,30 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
 - (void)resumeReadIfNotReading
 {
+    VERBOSE_LOG(@"socket:resumeReadIfNotReading");
+    
     [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
     
-    /* 
-    The readDatawithtimeOUt has been taken out of the conditional check for Tag equality to allow IOS to work with chunked data.  
-    The problem seems to be taht the socket generates either an overflow error on the tag or ??? as the tags do not equate and 
-    therfore the conditional is never called.  
-    
-    The side effect of this approach is that the server closes the socket so there is not the possiblity of a long poll.  
-    As this socket connection type is only used for d10 comms this is not an issue and wokrs suitably.  This requries the addition
-    of error trapping for "socket closed by server" to not trigger the socket retries for connection.
-    
-    To restore back to original delete the readDataWithTimeout above and un comment conditional below
-        
-    if (_readTag == _receivedTag && _plugin->_pendingReceive == 0 && [_socket isConnected] && ![_paused boolValue]) {
-        //[_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
-    }
-    */
+    /*
+     The readDatawithtimeOUt has been taken out of the conditional check for Tag equality to allow IOS to work with chunked data.
+     The problem seems to be taht the socket generates either an overflow error on the tag or ??? as the tags do not equate and
+     therfore the conditional is never called.
+     
+     The side effect of this approach is that the server closes the socket so there is not the possiblity of a long poll.
+     As this socket connection type is only used for d10 comms this is not an issue and wokrs suitably.  This requries the addition
+     of error trapping for "socket closed by server" to not trigger the socket retries for connection.
+     
+     To restore back to original delete the readDataWithTimeout above and un comment conditional below
+     
+     if (_readTag == _receivedTag && _plugin->_pendingReceive == 0 && [_socket isConnected] && ![_paused boolValue]) {
+     //[_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+     }
+     */
 }
 
 - (void)setPaused:(NSNumber*)paused
 {
+    VERBOSE_LOG(@"socket:SetPaused");
     if (![_paused isEqualToNumber:paused]) {
         _paused = paused;
         if (![_paused boolValue]) {
@@ -298,6 +311,8 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
 - (void)sendReceivedData:(NSData*)data
 {
+        VERBOSE_LOG(@"socket:sendReceivedData");
+    
     if (_uriFileHandle) {
 
         NSUInteger bytesRead = 0;
@@ -352,7 +367,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
 - (void)socket:(GCDAsyncSocket *)sock didConnectToHost:(NSString *)host port:(UInt16)port
 {
-    VERBOSE_LOG(@"socket:didConnectToHost socketId: %u", _socketId);
+    VERBOSE_LOG(@"socket:didConnectToHost socketId: %lu", _socketId);
 
     void (^callback)(BOOL, NSError*) = _connectCallback;
     assert(callback != nil);
@@ -361,14 +376,18 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
     callback(YES, nil);
 
     if (![_paused boolValue])
-        [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+        
+    //[_socket readDataToData:_endChar withTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+    [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue]  tag:++_readTag];
 }
 
 - (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
 {
-    VERBOSE_LOG(@"socket:didReadDataWithTag socketId: %u", _socketId);
+    VERBOSE_LOG(@"socket:didReadDataWithTag socketId: %lu  tag: %lu", _socketId, tag);
 
     _receivedTag = tag;
+    
+    NSLog(@"Received Tag did read data %lu", _receivedTag);
 
     if ([_paused boolValue]) {
         [_pausedBuffers addObject:data];
@@ -379,13 +398,15 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
 - (void)socket:(GCDAsyncSocket *)sock didWriteDataWithTag:(long)tag
 {
+    VERBOSE_LOG(@"socket:didWriteDataWithTag");
+    
     assert([_sendCallbacks count] != 0);
     void (^callback)() = _sendCallbacks[0];
     assert(callback != nil);
     [_sendCallbacks removeObjectAtIndex:0];
 
     callback();
-
+    
     [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:-1];
 }
 
@@ -409,7 +430,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
 - (void)socketDidSecure:(GCDAsyncSocket *)sock
 {
-    VERBOSE_LOG(@"socketDidSecure socketId: %u", _socketId);
+    VERBOSE_LOG(@"socketDidSecure socketId: %lu", _socketId);
 
     assert(_secureCallback != nil);
     void (^callback)() = _secureCallback;
@@ -687,6 +708,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
 - (void)fireReceiveEventsWithSocketId:(NSUInteger)theSocketId data:(NSData*)theData
 {
+        VERBOSE_LOG(@"****fireReceiveEventsWithSocketId: ");
     NSArray* multipart = @[
         @{@"socketId":[NSNumber numberWithUnsignedInteger:theSocketId]},
         theData,
@@ -696,11 +718,13 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
 - (void)fireReceiveEventsWithInfo:(NSDictionary*)theInfo waitReadyToRead:(BOOL)waitReadyToRead
 {
+        VERBOSE_LOG(@"*****fireReceiveEventsWithSocketId: ");
     [self fireReceiveEventsWithMultiPart:@[theInfo] waitReadyToRead:waitReadyToRead];
 }
 
 - (void)fireReceiveEventsWithMultiPart:(NSArray*)theMultiPart waitReadyToRead:(BOOL)waitReadyToRead
 {
+    VERBOSE_LOG(@"*****fireReceiveEventsWithMultiPart: ");
     assert(_receiveEventsCallbackId != nil);
     CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsMultipart:theMultiPart];
     [result setKeepCallbackAsBool:YES];
@@ -738,6 +762,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
 - (void)readyToRead:(CDVInvokedUrlCommand*)command
 {
+    VERBOSE_LOG(@"socket:readyToRead");
     _pendingReceive--;
     if (_pendingReceive == 0) {
         for (ChromeSocketsTcpSocket* socket in [_sockets allValues]) {
