@@ -206,8 +206,8 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
         _name = name;
 
     if (bufferSize && _bufferSize == 0 && ![_paused boolValue]) // read delegate method won't be called when _bufferSize == 0
-        //[_socket readDataToData:_endChar withTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
-        [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+        //[_socket readDataToData:_endChar withTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+        [_socket readDataWithTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
 
     if (bufferSize)
         _bufferSize = bufferSize;
@@ -275,7 +275,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 {
     VERBOSE_LOG(@"socket:resumeReadIfNotReading");
     
-    [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+    [_socket readDataWithTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
     
     /*
      The readDatawithtimeOUt has been taken out of the conditional check for Tag equality to allow IOS to work with chunked data.
@@ -289,7 +289,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
      To restore back to original delete the readDataWithTimeout above and un comment conditional below
      
      if (_readTag == _receivedTag && _plugin->_pendingReceive == 0 && [_socket isConnected] && ![_paused boolValue]) {
-     //[_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+     //[_socket readDataWithTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
      }
      */
 }
@@ -377,8 +377,8 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
     if (![_paused boolValue])
         
-    //[_socket readDataToData:_endChar withTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
-    [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue]  tag:++_readTag];
+    //[_socket readDataToData:_endChar withTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+    [_socket readDataWithTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue]  tag:++_readTag];
 }
 
 - (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
@@ -407,7 +407,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
     callback();
     
-    [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:-1];
+    [_socket readDataWithTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:-1];
 }
 
 - (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
@@ -528,7 +528,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
     } copy];
 
     NSError* err = nil;
-    BOOL success = [socket->_socket connectToHost:peerAddress onPort:peerPort withTimeout:2 error:&err];
+    BOOL success = [socket->_socket connectToHost:peerAddress onPort:peerPort withTimeout:20 error:&err];
 
     if (!success) {
         void(^callback)(BOOL, NSError*) = socket->_connectCallback;
@@ -638,7 +638,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
             [commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:(int)[data length]] callbackId:command.callbackId];
         } copy]];
 
-        [socket->_socket writeData:data withTimeout:-1 tag:-1];
+        [socket->_socket writeData:data withTimeout:20 tag:-1];
 
     } else {
         [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[self buildErrorInfoWithErrorCode:ENOTCONN message:@"Socket Not Connected"]] callbackId:command.callbackId];
