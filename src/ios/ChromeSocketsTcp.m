@@ -207,7 +207,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
     if (bufferSize && _bufferSize == 0 && ![_paused boolValue]) // read delegate method won't be called when _bufferSize == 0
         //[_socket readDataToData:_endChar withTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
-        [_socket readDataWithTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+        [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
 
     if (bufferSize)
         _bufferSize = bufferSize;
@@ -275,7 +275,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 {
     VERBOSE_LOG(@"socket:resumeReadIfNotReading");
     
-    [_socket readDataWithTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
+    [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
     
     /*
      The readDatawithtimeOUt has been taken out of the conditional check for Tag equality to allow IOS to work with chunked data.
@@ -378,7 +378,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
     if (![_paused boolValue])
         
     //[_socket readDataToData:_endChar withTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:++_readTag];
-    [_socket readDataWithTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue]  tag:++_readTag];
+    [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue]  tag:++_readTag];
 }
 
 - (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
@@ -407,7 +407,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
 
     callback();
     
-    [_socket readDataWithTimeout:20 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:-1];
+    [_socket readDataWithTimeout:-1 buffer:nil bufferOffset:0 maxLength:[_bufferSize unsignedIntegerValue] tag:-1];
 }
 
 - (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
