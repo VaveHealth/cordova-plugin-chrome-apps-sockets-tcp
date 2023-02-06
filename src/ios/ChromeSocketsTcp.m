@@ -528,7 +528,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
     } copy];
 
     NSError* err = nil;
-    BOOL success = [socket->_socket connectToHost:peerAddress onPort:peerPort withTimeout:20 error:&err];
+    BOOL success = [socket->_socket connectToHost:peerAddress onPort:peerPort withTimeout:-1 error:&err];
 
     if (!success) {
         void(^callback)(BOOL, NSError*) = socket->_connectCallback;
@@ -638,7 +638,7 @@ NSTimeInterval const PIPE_TO_FILE_PROGRESS_INTERVAL = 0.1;
             [commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:(int)[data length]] callbackId:command.callbackId];
         } copy]];
 
-        [socket->_socket writeData:data withTimeout:20 tag:-1];
+        [socket->_socket writeData:data withTimeout:-1 tag:-1];
 
     } else {
         [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[self buildErrorInfoWithErrorCode:ENOTCONN message:@"Socket Not Connected"]] callbackId:command.callbackId];
